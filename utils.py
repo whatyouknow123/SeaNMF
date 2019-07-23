@@ -1,5 +1,15 @@
+import jieba.posseg as pos
 import re
 import numpy as np
+
+# read stop words file
+print("read stop words")
+stopwords = set()
+with open("data/stopwords", "r") as data:
+    for word in data:
+        stopwords.add(word.strip("\n"))
+print("finish read stop words: ", len(stopwords))
+
 
 def read_docs(file_name):
     print('read documents')
@@ -27,6 +37,25 @@ def read_vocab(file_name):
 
     return vocab
 
+def create_doc_term_mat(vocab_file, file_name, file_out):
+    vocab_arr = read_vocab(vocab_file)
+    # vocabulary to id
+    vocab2id = {itm[1]: itm[0] for itm in enumerate(vocab_arr)}
+    fout = open(file_out, "w")
+    with open(file_name, "r") as data:
+        for line in data:
+            values = pos.cut(line.strip())
+            arr = []
+            for token, token_pos in values:
+                if token_pos.find("n") != -1 and token not in stopwords:
+                    arr.append(token)
+            arr = [str(vocab2id[wd]) for wd in arr if wd in vocab2id]
+            if len(arr) > 0:
+                sen = ' '.join(arr)
+                fout.write(sen + '\n')
+    fout.close()
+
+
 def calculate_PMI(AA, topKeywordsIndex):
     '''
     Reference:
@@ -48,3 +77,6 @@ def calculate_PMI(AA, topKeywordsIndex):
 
     return avg_PMI
 
+
+if __name__ == "__main__":
+    create_doc_term_mat("data/vocab.txt", "data/tianmaojingling_test_data_answer", "tianmaojingling_test")

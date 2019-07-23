@@ -5,6 +5,8 @@ import os
 import time
 import argparse
 import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from bert_serving.client import BertClient
 
 from utils import *
 from model import *
@@ -26,6 +28,9 @@ vocab = read_vocab(args.vocab_file)
 n_docs = len(docs)
 n_terms = len(vocab)
 print('n_docs={}, n_terms={}'.format(n_docs, n_terms))
+
+bc = BertClient("30.12.140.2")
+print("start bert client")
 
 tmp_folder = 'seanmf_results'
 if not os.access(tmp_folder, os.F_OK):
@@ -61,6 +66,7 @@ if args.model.lower() == 'seanmf':
     print('-'*50)
     print('calculate PPMI')
     D1 = np.sum(dt_mat)
+    '''
     SS = D1*dt_mat
     for k in range(n_terms):
         SS[k] /= np.sum(dt_mat[k])
@@ -69,10 +75,20 @@ if args.model.lower() == 'seanmf':
     dt_mat = [] # release memory
     SS[SS==0] = 1.0
     SS = np.log(SS)
+    '''
+    # use bert to get SS
+    vocab_vector = bc.encode(vocab)
+    SS = np.array(cosine_similarity(vocab_vector))
+
     SS[SS<0.0] = 0.0
     print('PPMI done')
     print('-'*50)
-    
+
+    # find most similarity word for word in vocab
+    for index, word in enumerate(vocab):
+        sim_word = vocab[np.argsort(-SS[index, :])[0]]
+        print("%s most similarity word is: %s" % (word, sim_word))
+
     print('read term doc matrix')
     dt_mat = np.zeros([n_terms, n_docs])
     for k in range(n_docs):
